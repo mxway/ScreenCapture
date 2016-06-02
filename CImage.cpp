@@ -40,6 +40,7 @@ int CImage::getBmpFromDc()
 	{
 		return -1;
 	}
+	return 0;
 }
 
 CBmpImage::CBmpImage(HDC hdc,HBITMAP hbitMap):CImage(hdc,hbitMap)
@@ -73,7 +74,8 @@ int CBmpImage::saveImage(string fileName)
 	bmpHeader.biCompression = 0;
 	bmpHeader.biSizeImage = bmpFileHeader.bfSize - sizeof(BITMAPFILEHEADER)-sizeof(BITMAPINFOHEADER);
 	
-	FILE *fp = fopen(fileName.c_str(),"wb");
+	FILE *fp;
+	fopen_s(&fp,fileName.c_str(),"wb");
 	if(fp==NULL)
 	{
 		return -1;
@@ -106,7 +108,8 @@ int CPngImage::saveImage(string fileName)
 	png_info *info = NULL;
 	png_color_8 sbit;
 
-	FILE *fp = fopen(fileName.c_str(),"wb");
+	FILE *fp ;
+	fopen_s(&fp,fileName.c_str(),"wb");
 	if(fp==NULL)
 	{
 		return -1;
@@ -137,4 +140,5 @@ int CPngImage::saveImage(string fileName)
 END:
 	if(fp)fclose(fp);
 	if(png)png_destroy_write_struct(&png,&info);
+	return 0;
 }
