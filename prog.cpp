@@ -1,6 +1,6 @@
 #include <Windows.h>
 #include <tchar.h>
-#include "CImage.h"
+#include "ImageFactory.h"
 
 #pragma comment(lib,"Msimg32.lib")
 
@@ -129,7 +129,7 @@ LRESULT OnButtonEvent(HWND hwnd,UINT msg,WPARAM wParam,LPARAM lParam)
 	OPENFILENAME	ofn = {0};
 	ofn.lStructSize = sizeof(OPENFILENAME);
 	ofn.hwndOwner = hwnd;
-	ofn.lpstrFilter = "BMP file(*.bmp)\0*.bmp\0PNG file(*.png)\0*.png\0\0";
+	ofn.lpstrFilter = "BMP file(*.bmp)\0*.bmp\0PNG file(*.png)\0*.png\0JPGÎÄ¼þ\0*.jpg\0\0";
 	ofn.lpstrDefExt = "BMP";
 	ofn.nFilterIndex = ofn.lpstrFilter?1:0;
 	ofn.lpstrFile = fileName;
@@ -169,16 +169,9 @@ LRESULT OnButtonEvent(HWND hwnd,UINT msg,WPARAM wParam,LPARAM lParam)
 			::ReleaseDC(hwnd,hdc);
 			if(::GetSaveFileName(&ofn) && strlen(fileName)>0)
 			{
-				CImage *image = NULL;
-				if(ofn.nFilterIndex == 1)
-				{
-					image = new CBmpImage(selfDc,hbitMap);
-				}
-				else
-				{
-					image = new CPngImage(selfDc,hbitMap);
-				}
-				image->saveImage(fileName);
+				CImage	*image = CImageFactory::GetImage(ofn.nFilterIndex);
+				image->saveImage(selfDc,hbitMap,fileName);
+				delete image;
 			}
 			::DeleteDC(selfDc);
 			::DeleteObject(hbitMap);

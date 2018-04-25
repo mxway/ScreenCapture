@@ -6,31 +6,48 @@ using namespace std;
 class CImage
 {
 public:
-	CImage(HDC hdc,HBITMAP hbitMap);
+	CImage();
 	virtual ~CImage();
-	virtual int saveImage(string fileName)=0;
+	virtual int saveImage(HDC hdc,HBITMAP hbitMap,string fileName)=0;
 protected:
 	int  getBmpFromDc();
 protected:
 	HDC	m_hdc;
-	char *m_buf;
+	char *m_buf;//存储选中区域的像素rgb颜色值。每个像素用3字节存储
 	HBITMAP	m_hBitMap;
 	BITMAP	m_bitMap;
+};
+
+//空对象模式，生成的空对象不做任何操作
+class CNullImage:public CImage
+{
+public:
+	CNullImage(){}
+	~CNullImage(){}
+	virtual int saveImage(HDC hdc,HBITMAP hbitMap,string fileName){return 0;}
 };
 
 class CBmpImage:public CImage
 {
 public:
-	CBmpImage(HDC hdc,HBITMAP hbitMap);
+	CBmpImage();
 	virtual ~CBmpImage();
-	virtual int saveImage(string fileName);
+	virtual int saveImage(HDC hdc,HBITMAP hbitMap,string fileName);
 };
 
 class CPngImage:public CImage
 {
 public:
-	CPngImage(HDC hdc,HBITMAP hbitMap);
+	CPngImage();
 	virtual ~CPngImage();
-	virtual int saveImage(string fileName);
+	virtual int saveImage(HDC hdc,HBITMAP hbitMap,string fileName);
+};
+
+class CJpegImage:public CImage
+{
+public:
+	CJpegImage();
+	virtual	~CJpegImage();
+	virtual  int saveImage(HDC hdc,HBITMAP hbitMap,string fileName);
 };
 #endif

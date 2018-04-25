@@ -1,10 +1,11 @@
 #include "CImage.h"
 #include "../libpng/png.h"
+#include <jpeglib.h>
 
-CImage::CImage(HDC hdc,HBITMAP hbitMap):m_buf(NULL)
+
+CImage::CImage():m_buf(NULL)
 {
-	m_hdc = hdc;
-	m_hBitMap = hbitMap;
+	
 }
 
 CImage::~CImage()
@@ -43,7 +44,7 @@ int CImage::getBmpFromDc()
 	return 0;
 }
 
-CBmpImage::CBmpImage(HDC hdc,HBITMAP hbitMap):CImage(hdc,hbitMap)
+CBmpImage::CBmpImage()
 {
 
 }
@@ -52,8 +53,10 @@ CBmpImage::~CBmpImage()
 
 }
 
-int CBmpImage::saveImage(string fileName)
+int CBmpImage::saveImage(HDC hdc,HBITMAP hbitMap,string fileName)
 {
+	m_hdc = hdc;
+	m_hBitMap = hbitMap;
 	BITMAPFILEHEADER	bmpFileHeader;
 	BITMAPINFOHEADER bmpHeader;
 	unsigned int lineSize = 0;
@@ -88,7 +91,7 @@ int CBmpImage::saveImage(string fileName)
 	
 }
 
-CPngImage::CPngImage(HDC hdc,HBITMAP hbitMap):CImage(hdc,hbitMap)
+CPngImage::CPngImage()
 {
 
 }
@@ -98,9 +101,10 @@ CPngImage::~CPngImage()
 
 }
 
-int CPngImage::saveImage(string fileName)
+int CPngImage::saveImage(HDC hdc,HBITMAP hbitMap,string fileName)
 {
-
+	m_hdc = hdc;
+	m_hBitMap = hbitMap;
 	this->getBmpFromDc();
 	unsigned int lineSize = m_bitMap.bmWidth*3;
 	lineSize = (lineSize+3)&~(3);
@@ -140,5 +144,67 @@ int CPngImage::saveImage(string fileName)
 END:
 	if(fp)fclose(fp);
 	if(png)png_destroy_write_struct(&png,&info);
+	return 0;
+}
+
+CJpegImage::CJpegImage()
+{
+
+}
+
+CJpegImage::~CJpegImage()
+{
+
+}
+
+int CJpegImage::saveImage(HDC hdc,HBITMAP hbitMap,string fileName)
+{
+	m_hdc = hdc;
+	m_hBitMap = hbitMap;
+	this->getBmpFromDc();
+	struct jpeg_error_mgr jerr;
+	FILE	*fp = NULL;
+	fopen_s(&fp,fileName.c_str(),"wb");
+	if(fp==NULL)
+	{
+		return -1;
+	}
+	jpeg_std_error(&jerr);
+
+	struct jpeg_compress_struct compressStruct;
+	compressStruct.err = &jerr;
+	jpeg_create_compress(&compressStruct);
+
+	
+	jpeg_stdio_dest(&compressStruct,fp);
+
+	compressStruct.image_width = m_bitMap.bmWidth;
+	compressStruct.image_height = m_bitMap.bmHeight;
+	compressStruct.input_components = 3;
+	compressStruct.in_color_space = JCS_RGB;
+
+	jpeg_set_defaults(&compressStruct);
+	jpeg_set_quality(&compressStruct,50,1);
+	jpeg_start_compress(&compressStruct,1);
+	unsigned int tmpLineSize = m_bitMap.bmWidth*3;
+	tmpLineSize = (tmpLineSize+3)&(~3);
+	JSAMPROW	row_pointer[1];
+	for(int i=0;i<m_bitMap.bmHeight;i++)
+	{
+		row_pointer[0] = (JSAMPROW)(m_buf + tmpLineSize*(m_bitMap.bmHeight-1-i));
+		for(int j=0;j<m_bitMap.bmWidth;j++)
+		{
+			//修改rgb颜色的顺序，将rgb改成gbr
+			BYTE	r = row_pointer[0][j*3];
+			BYTE	b = row_pointer[0][j*3+2];
+			row_pointer[0][j*3] = b;
+			row_pointer[0][j*3+2] = r;
+		}
+		//向jpeg一行一行写入数据
+		jpeg_write_scanlines(&compressStruct,row_pointer,1);
+	}
+	jpeg_finish_compress(&compressStruct);
+	jpeg_destroy_compress(&compressStruct);
+	fclose(fp);
 	return 0;
 }
