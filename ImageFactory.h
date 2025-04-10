@@ -1,4 +1,4 @@
-#ifndef IMAGE_FACTORY_INCLUDE_H
+﻿#ifndef IMAGE_FACTORY_INCLUDE_H
 #define IMAGE_FACTORY_INCLUDE_H
 #include "CImage.h"
 

@@ -1,4 +1,4 @@
-#ifndef CIMAGE_INCLUDE_H
+ï»¿#ifndef CIMAGE_INCLUDE_H
 #define CIMAGE_INCLUDE_H
 #include <windows.h>
 #include <string>
@@ -13,12 +13,12 @@ protected:
 	int  getBmpFromDc();
 protected:
 	HDC	m_hdc;
-	char *m_buf;//´æ´¢Ñ¡ÖĞÇøÓòµÄÏñËØrgbÑÕÉ«Öµ¡£Ã¿¸öÏñËØÓÃ3×Ö½Ú´æ´¢
+	unsigned char *m_buf;//store the rgb values of selected region,each pixel use 3bytes
 	HBITMAP	m_hBitMap;
 	BITMAP	m_bitMap;
 };
 
-//¿Õ¶ÔÏóÄ£Ê½£¬Éú³ÉµÄ¿Õ¶ÔÏó²»×öÈÎºÎ²Ù×÷
+//NullObject pattern,CNullImge does nothing.
 class CNullImage:public CImage
 {
 public:

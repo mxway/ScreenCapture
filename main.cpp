@@ -1,29 +1,28 @@
-#include <Windows.h>
+ï»¿#include <Windows.h>
 #include <tchar.h>
 #include "ImageFactory.h"
-
-#pragma comment(lib,"Msimg32.lib")
+#include "Dpi.h"
+#include "win/CharsetConvert.h"
 
 LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
 LRESULT OnButtonEvent(HWND,UINT,WPARAM,LPARAM);
 void    DrawRect(HWND hwnd);
-
-static TCHAR szAppName[] = TEXT("ScreenCapture");
-static TCHAR szAppVer[] = "version 0.1";
-HDC		g_memDc;
-HDC		g_darkDc;
-//HDC		g_selfDc;
+HDC		g_memDc = nullptr;
+HDC		g_darkDc = nullptr;
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine, int iCmdShow)
 {
+	wchar_t szAppName[] = L"ScreenCapture";
 	HWND		hwnd;
 	MSG			msg;
-	WNDCLASS	wndclass;
+	WNDCLASSW	wndclass;
 	HWND		desktopWnd;
 	HDC			deskDc;
 	HBITMAP		hbitMap;
+	Dpi::SetDpiAwareness(Process_Per_Monitor_Dpi_Aware);
 	int width = ::GetSystemMetrics(SM_CXSCREEN);
 	int height = ::GetSystemMetrics(SM_CYSCREEN);
+
 	BLENDFUNCTION	blendFuction = {AC_SRC_OVER,0,200,0};
 
 	wndclass.style = CS_HREDRAW|CS_VREDRAW;
@@ -37,13 +36,12 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine,
 	wndclass.lpszMenuName = NULL;
 	wndclass.lpszClassName = szAppName;
 
-	if(!::RegisterClass(&wndclass))
+	if(!::RegisterClassW(&wndclass))
 	{
-		MessageBox(NULL,TEXT("This program requires Windows NT!"),
+		MessageBoxW(NULL,L"This program requires Windows NT!",
 			szAppName,MB_ICONERROR);
 		return 0;
 	}
-	
 	desktopWnd = ::GetDesktopWindow();
 	deskDc = ::GetDC(desktopWnd);
 	hbitMap = ::CreateCompatibleBitmap(deskDc,width,height);
@@ -57,15 +55,15 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine,
 	::AlphaBlend(g_darkDc,0,0,width,height,g_memDc,0,0,width,height,blendFuction);
 	::ReleaseDC(desktopWnd,deskDc);
 
-	hwnd = ::CreateWindowEx(WS_EX_LTRREADING, szAppName,TEXT("ÆÁÄ»½ØÍ¼"),WS_POPUP,
+	hwnd = ::CreateWindowExW(WS_EX_LTRREADING, szAppName,L"ScreenCapture",WS_POPUP,
 						CW_USEDEFAULT,CW_USEDEFAULT,CW_USEDEFAULT,CW_USEDEFAULT,0,0,hInstance,0);
 	::ShowWindow(hwnd,iCmdShow);
 	::UpdateWindow(hwnd);
 
-	while(::GetMessage(&msg, NULL, 0, 0))
+	while(::GetMessageW(&msg, NULL, 0, 0))
 	{
 		::TranslateMessage(&msg);
-		::DispatchMessage(&msg);
+		::DispatchMessageW(&msg);
 	}
 	::DeleteObject(hDarkBmp);
 	::DeleteObject(hbitMap);
@@ -81,7 +79,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 	int width = ::GetSystemMetrics(SM_CXSCREEN);
 	int height = ::GetSystemMetrics(SM_CYSCREEN);
 	int vkey = int(wParam);
-	
+
 	switch(message)
 	{
 	case WM_PAINT:
@@ -108,7 +106,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 		}
 		break;
 	}
-	return ::DefWindowProc(hwnd,message,wParam,lParam);
+	return ::DefWindowProcW(hwnd,message,wParam,lParam);
 }
 
 int mouseDown = 0;
@@ -119,23 +117,25 @@ LRESULT OnButtonEvent(HWND hwnd,UINT msg,WPARAM wParam,LPARAM lParam)
 {
 	int xPos = LOWORD(lParam);
 	int yPos = HIWORD(lParam);
-	char	currentPath[MAX_PATH] = {0};
-	char	fileName[1024] = {0};
+	wchar_t	currentPath[MAX_PATH] = {0};
+	wchar_t	fileName[1024] = {0};
+	char	*utf8String = nullptr;
 	HDC		hdc;
-	
+
 	int width = ::GetSystemMetrics(SM_CXSCREEN);
 	int height = ::GetSystemMetrics(SM_CYSCREEN);
-	::GetCurrentDirectory(MAX_PATH-1,currentPath);
-	OPENFILENAME	ofn = {0};
-	ofn.lStructSize = sizeof(OPENFILENAME);
+
+	::GetCurrentDirectoryW(MAX_PATH-1,currentPath);
+	OPENFILENAMEW	ofn = {0};
+	ofn.lStructSize = sizeof(OPENFILENAMEW);
 	ofn.hwndOwner = hwnd;
-	ofn.lpstrFilter = "BMP file(*.bmp)\0*.bmp\0PNG file(*.png)\0*.png\0JPGÎÄ¼þ\0*.jpg\0\0";
-	ofn.lpstrDefExt = "BMP";
+	ofn.lpstrFilter = L"BMP file(*.bmp)\0*.bmp\0PNG file(*.png)\0*.png\0JPGæ–‡ä»¶\0*.jpg\0\0";
+	ofn.lpstrDefExt = L"BMP";
 	ofn.nFilterIndex = ofn.lpstrFilter?1:0;
 	ofn.lpstrFile = fileName;
 	ofn.nMaxFile = 1024;
 	ofn.lpstrInitialDir = currentPath;
-	ofn.lpstrTitle = "±£´æÍ¼Æ¬";
+	ofn.lpstrTitle = L"Save Picture";
 	ofn.Flags = OFN_OVERWRITEPROMPT;
 
 	RECT rect;
@@ -165,12 +165,14 @@ LRESULT OnButtonEvent(HWND hwnd,UINT msg,WPARAM wParam,LPARAM lParam)
 			::SelectObject(selfDc,hbitMap);
 			::BitBlt(selfDc,0,0,rect.right-rect.left+1,rect.bottom-rect.top+1,
 				g_memDc,rect.left,rect.top,SRCCOPY);
-			
+
 			::ReleaseDC(hwnd,hdc);
-			if(::GetSaveFileName(&ofn) && strlen(fileName)>0)
+			if(::GetSaveFileNameW(&ofn) && wcslen(fileName)>0)
 			{
 				CImage	*image = CImageFactory::GetImage(ofn.nFilterIndex);
-				image->saveImage(selfDc,hbitMap,fileName);
+				utf8String = Utf16ToUtf8(fileName,-1);
+				image->saveImage(selfDc,hbitMap,utf8String);
+				delete []utf8String;
 				delete image;
 			}
 			::DeleteDC(selfDc);
@@ -209,14 +211,14 @@ void DrawRect(HWND hwnd)
 {
 	HDC  hdc = ::GetDC(hwnd);
 	RECT rect;
-	TCHAR	szBuf[MAX_PATH] = {0};
+	wchar_t	szBuf[MAX_PATH] = {0};
 	int width = ::GetSystemMetrics(SM_CXSCREEN);
 
 	rect.left = startPos.x<endPos.x?startPos.x:endPos.x;
 	rect.right = startPos.x>endPos.x?startPos.x:endPos.x;
 	rect.top = startPos.y<endPos.y?startPos.y:endPos.y;
 	rect.bottom = startPos.y>endPos.y?startPos.y:endPos.y;
-	
+
 	int xPos = rect.left;
 	int yPos = rect.top-17;
 	if(yPos<17)
@@ -228,9 +230,8 @@ void DrawRect(HWND hwnd)
 	{
 		xPos = width-50;
 	}
+	_snwprintf(szBuf, MAX_PATH,L"%d x %d",rect.right-rect.left+1,rect.bottom-rect.top+1);
 
-	_sntprintf_s(szBuf,MAX_PATH,_T("%d x %d"),rect.right-rect.left+1,rect.bottom-rect.top+1);
-	
 	HPEN hPen = ::CreatePen(PS_DASH,1,RGB(255,0,0));
 	HPEN oldPen = (HPEN)::SelectObject(hdc,hPen);
 	::MoveToEx(hdc,rect.left,rect.top,NULL);
@@ -239,10 +240,8 @@ void DrawRect(HWND hwnd)
 	::LineTo(hdc,rect.left,rect.bottom);
 	::LineTo(hdc,rect.left,rect.top);
 	::SetTextColor(hdc,RGB(255,0,0));
-	::TextOut(hdc,xPos,yPos,szBuf,lstrlen(szBuf));
+	::TextOutW(hdc,xPos,yPos,szBuf,wcslen(szBuf));
 	::SelectObject(hdc,oldPen);
 	::DeleteObject(hPen);
-
-
 	::ReleaseDC(hwnd,hdc);
 }

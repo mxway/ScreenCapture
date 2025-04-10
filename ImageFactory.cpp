@@ -1,4 +1,4 @@
-#include "ImageFactory.h"
+﻿#include "ImageFactory.h"
 
 CImage *CImageFactory::GetImage(int type)
 {
