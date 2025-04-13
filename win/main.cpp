@@ -1,8 +1,10 @@
 ﻿#include <Windows.h>
 #include <tchar.h>
+
+#include "CharsetConvert.h"
 #include "ImageFactory.h"
 #include "Dpi.h"
-#include "win/CharsetConvert.h"
+#include "CharsetConvert.h"
 
 LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
 LRESULT OnButtonEvent(HWND,UINT,WPARAM,LPARAM);
@@ -129,7 +131,7 @@ LRESULT OnButtonEvent(HWND hwnd,UINT msg,WPARAM wParam,LPARAM lParam)
 	OPENFILENAMEW	ofn = {0};
 	ofn.lStructSize = sizeof(OPENFILENAMEW);
 	ofn.hwndOwner = hwnd;
-	ofn.lpstrFilter = L"BMP file(*.bmp)\0*.bmp\0PNG file(*.png)\0*.png\0JPG文件\0*.jpg\0\0";
+	ofn.lpstrFilter = L"BMP file(*.bmp)\0*.bmp\0PNG file(*.png)\0*.png\0JPG file(*.jpg)\0*.jpg\0\0";
 	ofn.lpstrDefExt = L"BMP";
 	ofn.nFilterIndex = ofn.lpstrFilter?1:0;
 	ofn.lpstrFile = fileName;
