@@ -8,12 +8,12 @@ else()
     link_libraries(X11 Xrender Xext)
 endif()
 
-FILE(GLOB SRC_FILES "*.cpp")
+FILE(GLOB SRC_FILES "src/*.cpp")
 
 if(WIN32)
-    FILE(GLOB SRC_OS_FILES "win/*.cpp")
+    FILE(GLOB SRC_OS_FILES "src/win/*.cpp")
 else()
-    FILE(GLOB SRC_OS_FILES "linux/*.cpp")
+    FILE(GLOB SRC_OS_FILES "src/linux/*.cpp")
 endif()
 
 ## window system does not show console

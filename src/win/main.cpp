@@ -1,10 +1,9 @@
 ﻿#include <Windows.h>
 #include <tchar.h>
-
 #include "CharsetConvert.h"
-#include "ImageFactory.h"
+#include "../ImageFactory.h"
 #include "Dpi.h"
-#include "CharsetConvert.h"
+#include "WindowBitmap.h"
 
 LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
 LRESULT OnButtonEvent(HWND,UINT,WPARAM,LPARAM);
@@ -161,24 +160,16 @@ LRESULT OnButtonEvent(HWND hwnd,UINT msg,WPARAM wParam,LPARAM lParam)
 			rect.top = startPos.y<endPos.y?startPos.y:endPos.y;
 			rect.bottom = startPos.y>endPos.y?startPos.y:endPos.y;
 
-			hdc = ::GetDC(hwnd);
-			HDC	selfDc = ::CreateCompatibleDC(hdc);
-			HBITMAP hbitMap = ::CreateCompatibleBitmap(hdc,rect.right-rect.left+1,rect.bottom-rect.top+1);
-			::SelectObject(selfDc,hbitMap);
-			::BitBlt(selfDc,0,0,rect.right-rect.left+1,rect.bottom-rect.top+1,
-				g_memDc,rect.left,rect.top,SRCCOPY);
-
-			::ReleaseDC(hwnd,hdc);
+			ImageBitmapInfo bmpInfo = GetImageBitmapInfoFromWindow(hwnd,g_memDc,rect);
 			if(::GetSaveFileNameW(&ofn) && wcslen(fileName)>0)
 			{
 				CImage	*image = CImageFactory::GetImage(ofn.nFilterIndex);
 				utf8String = Utf16ToUtf8(fileName,-1);
-				image->saveImage(selfDc,hbitMap,utf8String);
+				image->saveImage(utf8String,bmpInfo);
 				delete []utf8String;
 				delete image;
 			}
-			::DeleteDC(selfDc);
-			::DeleteObject(hbitMap);
+			free(bmpInfo.data);
 			::PostQuitMessage(0);
 		}
 		return 0;
