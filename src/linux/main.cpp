@@ -3,10 +3,12 @@
 #include <X11/cursorfont.h>
 #include <X11/keysym.h>
 #include <X11/extensions/Xrender.h>
-#include <stdio.h>
-#include <string.h>
+#include <cstdio>
+#include <cstring>
 #include <cmath>
 #include "../UIRect.h"
+#include "WindowBitmap.h"
+#include "../ImageFactory.h"
 
 using namespace std;
 
@@ -22,7 +24,7 @@ void setUtf8WindowTitle(Display *display, Window window, const char *title) {
     Atom utf8_string = XInternAtom(display, "UTF8_STRING", False);
 
     XChangeProperty(display, window, net_wm_name, utf8_string, 8,
-                    PropModeReplace, (unsigned char *)title, strlen(title));
+                    PropModeReplace, (unsigned char *)title, (int)strlen(title));
 }
 
 void CopyBitmapFromRootWindow(Display *display, Window window,int width, int height)
@@ -41,7 +43,7 @@ void CopyBitmapFromRootWindow(Display *display, Window window,int width, int hei
     XPutImage(display,rootPixmap, gc,rootImage,0,0,0,0,width,height);
     XDestroyImage(rootImage);
 
-    XRenderPictFormat *format = nullptr;
+    XRenderPictFormat *format {nullptr};
     if(DefaultDepth(display,screen) == 32){
         format = XRenderFindStandardFormat(display, PictStandardARGB32);
     }else{
@@ -67,8 +69,8 @@ void CopyBitmapFromRootWindow(Display *display, Window window,int width, int hei
 }
 
 int main() {
-    Display *display = XOpenDisplay(NULL);
-    if (display == NULL) {
+    Display *display = XOpenDisplay(nullptr);
+    if (display == nullptr) {
         fprintf(stderr, "Can't connect to X Server\n");
         return 1;
     }
@@ -91,7 +93,7 @@ int main() {
     XChangeProperty(display, window, wm_type, XA_ATOM, 32, PropModeReplace,
                     (unsigned char *)&wm_type_dock, 1);
 
-    // Disable window decorate,we will create a window without titlebar and border
+    // Disable window decorate,we will create a window without title bar and border
     Atom wm_state = XInternAtom(display, "_NET_WM_STATE", False);
     Atom wm_state_skip_taskbar = XInternAtom(display, "_NET_WM_STATE_SKIP_TASKBAR", False);
     Atom wm_state_skip_pager = XInternAtom(display, "_NET_WM_STATE_SKIP_PAGER", False);
@@ -140,11 +142,20 @@ int main() {
                 mouseY = event.xbutton.y;
                 XCopyArea(display,darkPixmap,window,gc,0,0,width,height,0,0);
             }
-        }else if(event.type == ButtonRelease && (event.xbutton.state & Button1Mask)) {
+        }else if(event.type == ButtonRelease && (event.xbutton.state & Button1Mask) && glbLeftMousePressed) {
+            glbLeftMousePressed = 0;
+            ImageBitmapInfo imageBitmapInfo = GetImageBitmapInfoFromWindow(display,rootPixmap,oldRect);
+            // GetImage
+            // 1 -- save picture as  bmp file format
+            // 2 -- save picture as png file format
+            // 3 -- save picture as jpg file format
+            CImage *image = CImageFactory::GetImage(3);
+            image->saveImage("ScreenCapture.jpg",imageBitmapInfo);
+            free(imageBitmapInfo.data);
+            delete image;
+            continueRunning = false;
             oldRect.x = oldRect.y = -1;
             oldRect.width = oldRect.height = 0;
-            glbLeftMousePressed = 0;
-
         }else if(event.type == MotionNotify) {
             if( (event.xmotion.state & Button1Mask) && glbLeftMousePressed){
                 int startX = mouseX<event.xbutton.x?mouseX:event.xbutton.x;
@@ -155,25 +166,29 @@ int main() {
                 UIRect newRect = {startX,startY,tmpWidth,tmpHeight};
 
                 XSetForeground(display,gc, 0xFFFF0000);
+                char dash_list[] = {10,20};
+                int dash_offset = 0;
+                XSetDashes(display,gc,dash_offset,dash_list,2);
+                XSetLineAttributes(display,gc,1,LineOnOffDash,CapButt,JoinMiter);
 
                 UIRect diffRectArray[4] = {0};
                 int count = 0;
                 rect_difference(&newRect, &oldRect,diffRectArray,&count);
-                for(int i=0;i<4;i++){
-                    if(diffRectArray[i].width<=0 || diffRectArray[i].height<=0){
+                for(auto & diffRect : diffRectArray){
+                    if(diffRect.width <= 0 || diffRect.height <= 0){
                         continue;
                     }
-                    XCopyArea(display,rootPixmap,window,gc,diffRectArray[i].x,diffRectArray[i].y,
-                              diffRectArray[i].width+1,diffRectArray[i].height+1,diffRectArray[i].x,diffRectArray[i].y);
+                    XCopyArea(display, rootPixmap, window, gc, diffRect.x, diffRect.y,
+                              diffRect.width + 1, diffRect.height + 1, diffRect.x, diffRect.y);
                 }
                 memset(diffRectArray,0,sizeof(diffRectArray));
                 rect_difference(&oldRect,&newRect,diffRectArray,&count);
-                for(int i=0;i<4;i++){
-                    if(diffRectArray[i].width<=0 || diffRectArray[i].height<=0){
+                for(auto & rangeRect : diffRectArray){
+                    if(rangeRect.width <= 0 || rangeRect.height <= 0){
                         continue;
                     }
-                    XCopyArea(display,darkPixmap,window,gc,diffRectArray[i].x,diffRectArray[i].y,
-                              diffRectArray[i].width+1,diffRectArray[i].height+1,diffRectArray[i].x,diffRectArray[i].y);
+                    XCopyArea(display, darkPixmap, window, gc, rangeRect.x, rangeRect.y,
+                              rangeRect.width + 1, rangeRect.height + 1, rangeRect.x, rangeRect.y);
                 }
                 oldRect = newRect;
                 XDrawRectangle(display,window,gc, oldRect.x,oldRect.y,oldRect.width,oldRect.height);
