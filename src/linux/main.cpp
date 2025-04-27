@@ -81,6 +81,7 @@ int main() {
     int height = DisplayHeight(display,screen);
 
     Cursor crossCursor = XCreateFontCursor(display,XC_cross);
+    CopyBitmapFromRootWindow(display, RootWindow(display,screen),width, height);
 
     Window window = XCreateSimpleWindow(
             display, RootWindow(display, screen),
@@ -120,7 +121,6 @@ int main() {
     GC gc = XCreateGC(display,window,0,nullptr);
 
     XMapWindow(display, window);
-    CopyBitmapFromRootWindow(display,window,width, height);
 
     UIRect oldRect = {-1,-1,0,0};
 
