@@ -9,6 +9,8 @@
 #include "../UIRect.h"
 #include "WindowBitmap.h"
 #include "../ImageFactory.h"
+#include "UIDlg/FileDialog.h"
+#include "UIDlg/Misc.h"
 
 using namespace std;
 
@@ -144,15 +146,33 @@ int main() {
             }
         }else if(event.type == ButtonRelease && (event.xbutton.state & Button1Mask) && glbLeftMousePressed) {
             glbLeftMousePressed = 0;
-            ImageBitmapInfo imageBitmapInfo = GetImageBitmapInfoFromWindow(display,rootPixmap,oldRect);
-            // GetImage
-            // 1 -- save picture as  bmp file format
-            // 2 -- save picture as png file format
-            // 3 -- save picture as jpg file format
-            CImage *image = CImageFactory::GetImage(3);
-            image->saveImage("ScreenCapture.jpg",imageBitmapInfo);
-            free(imageBitmapInfo.data);
-            delete image;
+            FileDialog  fileDialog;
+            fileDialog.Create(100,100,800,600,"Save File",window,WindowType_Popup);
+            uint32_t ret = fileDialog.Exec();
+            if(ret == UI_DLG_BUTTON_SAVE){
+                string savedFile = fileDialog.GetFileName();
+                uint32_t imageType = 0;
+                if(EndWith(savedFile,".bmp")){
+                    imageType = 1;
+                }else if(EndWith(savedFile,".png")){
+                    imageType = 2;
+                }else if(EndWith(savedFile,".jpg") || EndWith(savedFile,".jpeg")){
+                    imageType = 3;
+                }else{
+                    savedFile.append(".bmp");
+                    imageType = 1;
+                }
+                ImageBitmapInfo imageBitmapInfo = GetImageBitmapInfoFromWindow(display,rootPixmap,oldRect);
+                // GetImage
+                // 1 -- save picture as  bmp file format
+                // 2 -- save picture as png file format
+                // 3 -- save picture as jpg file format
+                CImage *image = CImageFactory::GetImage(imageType);
+                image->saveImage(savedFile,imageBitmapInfo);
+                free(imageBitmapInfo.data);
+                delete image;
+                continueRunning = false;
+            }
             continueRunning = false;
             oldRect.x = oldRect.y = -1;
             oldRect.width = oldRect.height = 0;
