@@ -24,6 +24,7 @@ FileDialog::FileDialog()
 
 FileDialog::~FileDialog() {
     PixmapCache::GetInstance()->Clear(this->GetWindowHandle());
+	pFocusControl=nullptr;
 }
 
 long FileDialog::OnReSize(MSG msg) {
