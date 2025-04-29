@@ -117,10 +117,18 @@ void FileDialog::PathChange(const string &path) {
 }
 
 long FileDialog::OnKeyPress(MSG msg) {
+    KeySym key = XLookupKeysym(&msg.xkey, 0);
+
+    int modifiers = msg.xkey.state;
+    if ((modifiers & ControlMask) && key == XK_c) {
+        //printf("Ctrl + C\n");
+        this->Close(UI_DLG_BUTTON_CLOSE);
+        return 1;
+    }
     if(pFocusControl != nullptr){
         pFocusControl->OnKeyDownEvent(msg);
     }
-    KeySym  key = XLookupKeysym(&msg.xkey,0);
+    //KeySym  key = XLookupKeysym(&msg.xkey,0);
     if(key == XK_Return){
         this->Close(UI_DLG_BUTTON_SAVE);
         return 0;
@@ -145,56 +153,7 @@ void FileDialog::Invalidate() {
     XSendEvent(window->display, window->window, False, ExposureMask, &event);
 }
 
-static void set_modal_hint(Display *display, Window window) {
-    Atom wm_state = XInternAtom(display, "_NET_WM_STATE", False);
-    Atom modal = XInternAtom(display, "_NET_WM_STATE_MODAL", False);
-
-    XChangeProperty(display, window, wm_state, XA_ATOM, 32, PropModeReplace,
-                    (unsigned char *)&modal, 1);
-}
-
-static bool running = true;
-
-uint32_t FileDialog::Exec() {
-    uint32_t ret = 0;
-
-    // setting the window to top level
-    Atom wm_state = XInternAtom(m_x11Window->display, "_NET_WM_STATE", False);
-    Atom wm_state_above = XInternAtom(m_x11Window->display, "_NET_WM_STATE_ABOVE", False);
-    XChangeProperty(m_x11Window->display, m_x11Window->window, wm_state, XA_ATOM, 32, PropModeAppend,
-                    (unsigned char *)&wm_state_above, 1);
-    XSetWindowAttributes attrs;
-    attrs.override_redirect = True;
-    XChangeWindowAttributes(m_x11Window->display, m_x11Window->window, CWOverrideRedirect, &attrs);
-
-    XMapWindow(m_x11Window->display,m_x11Window->window);
-
-    XSetInputFocus(m_x11Window->display,m_x11Window->window,RevertToParent, CurrentTime);
-
-    XEvent event;
-    while (running) {
-        XNextEvent(m_x11Window->display, &event);
-        if(XFilterEvent(&event,None)){
-            continue;
-        }
-        if (event.type == ClientMessage) {
-            Atom protocol = event.xclient.message_type;
-            if (protocol == XInternAtom(m_x11Window->display, "DIALOG_RESPONSE", False)) {
-                ret = event.xclient.data.l[0];
-                if(ret == UI_DLG_BUTTON_SAVE && m_edit.GetText().empty()){
-                    printf("File Name Should Not be emtpy...\n");
-                    continue;
-                }
-                this->OnClose(event);
-            }
-        }
-        this->MessageHandler(event);
-    }
-    return ret;
-}
-
 long FileDialog::OnClose(MSG msg) {
-    running = false;
     return XBaseWindow::OnClose(msg);
 }
 
@@ -207,9 +166,16 @@ long FileDialog::OnCreate() {
     m_pathButton.SetRect(pathButtonRect);
     UIRect  editRect = {30,window->height-60,window->width-60,40};
     m_edit.SetRect(editRect);
+    this->ChangeWindowStyle();
     return XBaseWindow::OnCreate();
 }
 
 string FileDialog::GetFileName() {
     return m_fileList.GetPath() + "/" + m_edit.GetText();
+}
+
+void FileDialog::ChangeWindowStyle() {
+    XSetWindowAttributes attrs;
+    attrs.override_redirect = True;
+    XChangeWindowAttributes(m_x11Window->display, m_x11Window->window, CWOverrideRedirect, &attrs);
 }

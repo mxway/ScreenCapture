@@ -26,11 +26,11 @@ UIEdit::UIEdit()
 
 UIEdit::~UIEdit() {
     ICData  *data = (ICData*)m_ic;
-    if(data->m_xic){
+    if(data && data->m_xic){
         XUnsetICFocus(data->m_xic);
         XDestroyIC(data->m_xic);
     }
-    if(data->m_xim){
+    if(data && data->m_xim){
         XCloseIM(data->m_xim);
     }
     X11Window  *window = this->GetWindowHandle();

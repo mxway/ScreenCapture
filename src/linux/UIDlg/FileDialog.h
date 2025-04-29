@@ -30,12 +30,11 @@ public:
 
     long OnCreate() override;
 
-    uint32_t Exec();
-
     string   GetFileName();
 
 private:
     void    Invalidate();
+    void    ChangeWindowStyle();
 private:
     UIFileListControl m_fileList;
     UIPathButton      m_pathButton;

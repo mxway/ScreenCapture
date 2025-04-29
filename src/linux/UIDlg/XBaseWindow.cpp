@@ -3,8 +3,8 @@
 #include <cstdio>
 #include <X11/keysym.h>
 #include <locale.h>
-
-static Display *glbDisplay = nullptr;
+#include <X11/Xatom.h>
+#include "DisplayInstance.h"
 
 XBaseWindow::XBaseWindow()
 {
@@ -19,26 +19,19 @@ XBaseWindow::~XBaseWindow() {
     if(m_x11Window->display!=nullptr && m_x11Window->window != 0){
         XDestroyWindow(m_x11Window->display, m_x11Window->window);
     }
-    if(m_x11Window->display!= nullptr){
-        XCloseDisplay(m_x11Window->display);
-    }
     delete m_x11Window;
 }
 
 bool XBaseWindow::Create(int x, int y, int width, int height, const char *title, Window parent,WindowType windowType) {
     setlocale(LC_ALL, "");
-    if(m_x11Window->display == nullptr){
-        glbDisplay = XOpenDisplay(nullptr);
-        if(glbDisplay == nullptr){
-            fprintf(stderr,"Can't connect to X Server...\n");
-            return false;
-        }
+    if(DisplayInstance::GetInstance().GetDisplay() == nullptr){
+        return false;
     }
-    m_x11Window->display = glbDisplay;
-    m_x11Window->screen = DefaultScreen(glbDisplay);
-    m_x11Window->depth = DefaultDepth(glbDisplay,m_x11Window->screen);
-    m_x11Window->visual = DefaultVisual(glbDisplay,m_x11Window->screen);
-    m_x11Window->colormap = DefaultColormap(glbDisplay,m_x11Window->screen);
+    m_x11Window->display = DisplayInstance::GetInstance().GetDisplay();
+    m_x11Window->screen = DisplayInstance::GetInstance().GetScreenNumber();
+    m_x11Window->depth = DisplayInstance::GetInstance().GetDisplayDepth();
+    m_x11Window->visual = DisplayInstance::GetInstance().GetVisual();
+    m_x11Window->colormap = DisplayInstance::GetInstance().GetColormap();
     if(m_x11Window->window != 0){
         fprintf(stderr,"Window Already been Created...\n");
         return false;
@@ -68,6 +61,41 @@ void XBaseWindow::ShowWindow() {
     ::XMapWindow(m_x11Window->display,m_x11Window->window);
 }
 
+static int modalRetValue = UI_DLG_BUTTON_CLOSE;
+
+static void set_modal_hint(Display *display, Window window) {
+    Atom wm_state = XInternAtom(display, "_NET_WM_STATE", False);
+    Atom modal = XInternAtom(display, "_NET_WM_STATE_MODAL", False);
+
+    XChangeProperty(display, window, wm_state, XA_ATOM, 32, PropModeReplace,
+                    (unsigned char *)&modal, 1);
+}
+
+int XBaseWindow::ShowModal() {
+    set_modal_hint(m_x11Window->display,m_x11Window->window);
+    XMapWindow(m_x11Window->display,m_x11Window->window);
+    XEvent event;
+
+    Atom wm_delete_window = XInternAtom(m_x11Window->display, "WM_DELETE_WINDOW", False);
+
+    XSetWMProtocols(m_x11Window->display, m_x11Window->window, &wm_delete_window, 1);
+    bool running = true;
+    while (running) {
+        XNextEvent(m_x11Window->display, &event);
+
+        if(XFilterEvent(&event,None)){
+            continue;
+        }
+        if(event.type == DestroyNotify){
+            this->OnFinalMessage();
+            running = false;
+            continue;
+        }
+        this->MessageHandler(event);
+    }
+    return modalRetValue;
+}
+
 void XBaseWindow::SetTitle(const char *title) {
     Atom net_wm_name = XInternAtom(m_x11Window->display, "_NET_WM_NAME", False);
     Atom utf8_string = XInternAtom(m_x11Window->display, "UTF8_STRING", False);
@@ -81,7 +109,6 @@ static bool glbContinueRunning = true;
 void XBaseWindow::MessageLoop() {
     XEvent event;
 
-    Atom wm_protocols = XInternAtom(m_x11Window->display, "WM_PROTOCOLS", False);
     Atom wm_delete_window = XInternAtom(m_x11Window->display, "WM_DELETE_WINDOW", False);
 
     XSetWMProtocols(m_x11Window->display, m_x11Window->window, &wm_delete_window, 1);
@@ -132,15 +159,6 @@ long XBaseWindow::OnRightButtonRelease(MSG msg) {
 }
 
 long XBaseWindow::OnKeyPress(MSG msg) {
-    KeySym keysym = XLookupKeysym(&msg.xkey, 0);
-
-    int modifiers = msg.xkey.state;
-    if ((modifiers & ControlMask) && keysym == XK_c) {
-        printf("Ctrl + C\n");
-        this->Close(UI_DLG_BUTTON_CLOSE);
-        //this->OnClose(msg);
-        glbContinueRunning = false;
-    }
     return 0;
 }
 
@@ -151,7 +169,11 @@ long XBaseWindow::OnKeyRelease(MSG msg) {
 long XBaseWindow::OnClose(MSG msg) {
     XDestroyWindow(m_x11Window->display,m_x11Window->window);
     m_x11Window->window = 0;
-    //glbContinueRunning = false;
+    if(msg.xclient.message_type == XInternAtom(m_x11Window->display, "UI_WINDOW_CLOSE_RESPONSE", False)){
+        modalRetValue = msg.xclient.data.l[0];
+    }else{
+        modalRetValue = UI_DLG_BUTTON_CLOSE;
+    }
     return 0;
 }
 
@@ -164,6 +186,8 @@ long XBaseWindow::OnMouseWheel(MSG msg) {
 }
 
 void XBaseWindow::MessageHandler(MSG event) {
+    Atom wm_protocols = XInternAtom(m_x11Window->display, "WM_PROTOCOLS", False);
+    Atom wm_delete_window = XInternAtom(m_x11Window->display, "WM_DELETE_WINDOW", False);
     switch (event.type) {
         case DestroyNotify:
             this->OnFinalMessage();
@@ -202,13 +226,22 @@ void XBaseWindow::MessageHandler(MSG event) {
         case ConfigureNotify:
             this->OnReSize(event);
             break;
+        case ClientMessage:
+            if (event.xclient.message_type == wm_protocols &&
+                event.xclient.data.l[0] == wm_delete_window) {
+                this->OnClose(event);
+            }else if (event.xclient.message_type == XInternAtom(m_x11Window->display, "UI_WINDOW_CLOSE_RESPONSE", False)) {
+                //event.xclient.data.l[0];
+                this->OnClose(event);
+            }
+            break;
         default:
             break;
     }
 }
 
 void XBaseWindow::Close(UIDlgButtonId id) {
-    Atom my_dialog_response = XInternAtom(m_x11Window->display, "DIALOG_RESPONSE", False);
+    Atom my_dialog_response = XInternAtom(m_x11Window->display, "UI_WINDOW_CLOSE_RESPONSE", False);
 
     XEvent event;
     event.type = ClientMessage;

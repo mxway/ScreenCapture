@@ -33,6 +33,8 @@ public:
 
     void   ShowWindow();
 
+    int    ShowModal();
+
     void   Close(UIDlgButtonId id = UI_DLG_BUTTON_CLOSE);
 
     void MessageLoop();
