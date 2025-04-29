@@ -1,7 +1,7 @@
-﻿#include "Dpi.h"
+#include "Dpi.h"
 #include <windows.h>
 
-typedef HRESULT WINAPI (*SetProcessDpiAwareness)(int);
+typedef HRESULT (WINAPI *SetProcessDpiAwareness)(int);
 
 void Dpi::SetDpiAwareness(ProcessDpiAwareness dpiAwareness) {
     HMODULE moduleHandle = ::LoadLibraryA("Shcore.dll");

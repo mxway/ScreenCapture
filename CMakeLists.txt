@@ -2,6 +2,8 @@
 
 project(ScreenCapture)
 
+set(CMAKE_CXX_STANDARD 11)
+
 if(WIN32)
     link_libraries(msimg32)
 else()
@@ -29,13 +31,9 @@ else()
     link_libraries(magic lunasvg)
 endif()
 
-## window system does not show console
-if(${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
-    if(${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
-        set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /SUBSYSTEM:WINDOWS")
-    else()
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mwindows")
-    endif()
+if(${CMAKE_SYSTEM_NAME} STREQUAL Windows)
+	add_executable(ScreenCapture WIN32  ${SRC_FILES} ${SRC_OS_FILES})
+else()
+	add_executable(ScreenCapture ${SRC_FILES} ${SRC_OS_FILES})
 endif()
 
-add_executable(ScreenCapture ${SRC_FILES} ${SRC_OS_FILES})
