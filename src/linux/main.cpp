@@ -189,6 +189,7 @@ int main() {
                 char dash_list[] = {10,20};
                 int dash_offset = 0;
                 XSetDashes(display,gc,dash_offset,dash_list,2);
+
                 XSetLineAttributes(display,gc,1,LineOnOffDash,CapButt,JoinMiter);
 
                 UIRect diffRectArray[4] = {0};
@@ -211,6 +212,10 @@ int main() {
                               rangeRect.width + 1, rangeRect.height + 1, rangeRect.x, rangeRect.y);
                 }
                 oldRect = newRect;
+                XCopyArea(display,rootPixmap,window,gc,oldRect.x,oldRect.y,1,oldRect.height,oldRect.x,oldRect.y);
+                XCopyArea(display,rootPixmap,window,gc,oldRect.x,oldRect.y,oldRect.width,1,oldRect.x,oldRect.y);
+                XCopyArea(display,rootPixmap,window,gc, oldRect.x, oldRect.y+oldRect.height,oldRect.width,1,oldRect.x,oldRect.y+oldRect.height);
+                XCopyArea(display,rootPixmap,window,gc, oldRect.x+oldRect.width,oldRect.y,1,oldRect.height,oldRect.x+oldRect.width,oldRect.y);
                 XDrawRectangle(display,window,gc, oldRect.x,oldRect.y,oldRect.width,oldRect.height);
             }
         }else if(event.type == KeyPress) {
