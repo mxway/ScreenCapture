@@ -4,6 +4,7 @@
 #include <X11/Xutil.h>
 #include <cstdint>
 #include <X11/extensions/Xrender.h>
+#include <X11/cursorfont.h>
 #include "MainWindow.h"
 #include "DisplayInstance.h"
 #include "FileDialog.h"
@@ -16,7 +17,8 @@
 MainWindow::MainWindow()
     : m_rootWindowPixmap{0},
       m_darkPixmap{0},
-      m_gc{nullptr}
+      m_gc{nullptr},
+      m_selectionCursor{0}
 {
 
 }
@@ -31,6 +33,12 @@ MainWindow::~MainWindow() {
     if(m_gc != nullptr){
         XFreeGC(m_x11Window->display,m_gc);
     }
+    XUngrabPointer(m_x11Window->display,CurrentTime);
+    if(m_selectionCursor != 0){
+        XFreeCursor(m_x11Window->display, m_selectionCursor);
+        m_selectionCursor = 0;
+    }
+
 }
 
 bool MainWindow::CreateFullScreenWindow() {
@@ -49,6 +57,8 @@ long MainWindow::OnPaint(MSG msg) {
 
 long MainWindow::OnCreate() {
     m_gc = XCreateGC(m_x11Window->display,m_x11Window->window,0, nullptr);
+    m_selectionCursor = XCreateFontCursor(m_x11Window->display, XC_cross);
+    XDefineCursor(m_x11Window->display, m_x11Window->window, m_selectionCursor);
     this->ChangeWindowStyle();
     this->CreateRootWindowPixmap();
     this->CreateDarkPixmap();
@@ -77,6 +87,7 @@ UIRect oldRect = {-1,-1,0,0};
 long MainWindow::OnLeftButtonRelease(MSG msg) {
     glbLeftMousePressed = 0;
     FileDialog  fileDialog;
+    XUngrabPointer(m_x11Window->display,CurrentTime);
     fileDialog.Create(100,100,800,600,"Save File",m_x11Window->window,WindowType_Popup);
     uint32_t ret = fileDialog.ShowModal();
     if(ret == UI_DLG_BUTTON_SAVE){

@@ -36,6 +36,7 @@ private:
     Pixmap      m_rootWindowPixmap;
     Pixmap      m_darkPixmap;
     GC          m_gc;
+    Cursor      m_selectionCursor;
 };
 
 

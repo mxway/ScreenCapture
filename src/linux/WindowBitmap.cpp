@@ -15,6 +15,6 @@ ImageBitmapInfo GetImageBitmapInfoFromWindow(Display *display, Drawable drawable
             rowData[3*x+2] = (pixel>>0)&0xFF;
         }
     }
-
+    XDestroyImage(image);
     return imageBitmapInfo;
 }

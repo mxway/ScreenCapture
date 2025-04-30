@@ -39,6 +39,8 @@ private:
     UIFileListControl m_fileList;
     UIPathButton      m_pathButton;
     UIEdit            m_edit;
+    Cursor            m_insertionCursor;
+    Cursor            m_normalCursor;
 };
 
 

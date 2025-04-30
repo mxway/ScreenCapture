@@ -1,7 +1,7 @@
 #include "FileDialog.h"
 #include "PixmapCache.h"
 #include <X11/Xft/Xft.h>
-#include <X11/Xatom.h>
+#include <X11/cursorfont.h>
 #include <unistd.h>
 #include <libgen.h>
 
@@ -9,7 +9,6 @@ UIControl   *pFocusControl = nullptr;
 
 FileDialog::FileDialog()
 {
-    //string path = ::getenv("HOME");
     char  selfFileName[1024] = {0};
     readlink("/proc/self/exe",selfFileName,1000);
     string path = dirname(selfFileName);
@@ -20,17 +19,25 @@ FileDialog::FileDialog()
     m_fileList.SetWindowHandle(this->GetWindowHandle());
     m_pathButton.SetWindowHandle(this->GetWindowHandle());
     m_edit.SetWindowHandle(this->GetWindowHandle());
+    m_insertionCursor = 0;
+    m_normalCursor = 0;
 }
 
 FileDialog::~FileDialog() {
     PixmapCache::GetInstance()->Clear(this->GetWindowHandle());
 	pFocusControl=nullptr;
+    XUngrabPointer(m_x11Window->display,CurrentTime);
+    if(m_insertionCursor != 0){
+        XFreeCursor(m_x11Window->display,m_insertionCursor);
+    }
+    if(m_normalCursor!=0){
+        XFreeCursor(m_x11Window->display,m_normalCursor);
+    }
 }
 
 long FileDialog::OnReSize(MSG msg) {
     XBaseWindow::OnReSize(msg);
     X11Window  *window = this->GetWindowHandle();
-    //UIRect  rect = {0,30,window->width,window->height-30};
     UIRect  rect = {30,30,window->width-60,window->height-100};
     m_fileList.SetRect(rect);
     UIRect  pathButtonRect = {30,0,window->width-60,30};
@@ -42,11 +49,16 @@ long FileDialog::OnReSize(MSG msg) {
 }
 
 long FileDialog::OnPaint(MSG msg) {
-
     X11Window  *winHandle = this->GetWindowHandle();
+    if(winHandle->window == 0){
+        return XBaseWindow::OnPaint(msg);
+    }
     if(winHandle->offscreenPixmap != 0){
         XFreePixmap(winHandle->display,winHandle->offscreenPixmap);
     }
+    XGrabPointer(winHandle->display, winHandle->window, True,
+                 ButtonPressMask | ButtonReleaseMask | PointerMotionMask,
+                 GrabModeAsync, GrabModeAsync, None, None, CurrentTime);
     winHandle->offscreenPixmap = XCreatePixmap(winHandle->display,winHandle->window,winHandle->width,winHandle->height,winHandle->depth);
     GC gc = XCreateGC(winHandle->display,winHandle->window,0, nullptr);
     XSetForeground(winHandle->display,gc, WhitePixel(winHandle->display,winHandle->screen));
@@ -108,6 +120,12 @@ long FileDialog::OnLeftButtonRelease(MSG msg) {
 
 long FileDialog::OnMouseMove(MSG msg) {
     m_fileList.OnMouseMove(msg);
+    UIPoint point = {msg.xmotion.x,msg.xmotion.y};
+    if(m_edit.IsPointIn(point)){
+        XDefineCursor(m_x11Window->display,m_x11Window->window,m_insertionCursor);
+    }else{
+        XDefineCursor(m_x11Window->display,m_x11Window->window,m_normalCursor);
+    }
     return XBaseWindow::OnMouseMove(msg);
 }
 
@@ -160,6 +178,8 @@ long FileDialog::OnClose(MSG msg) {
 
 long FileDialog::OnCreate() {
     X11Window  *window = this->GetWindowHandle();
+    m_insertionCursor = XCreateFontCursor(window->display,XC_xterm);
+    m_normalCursor = XCreateFontCursor(window->display,XC_arrow);
     //UIRect  rect = {0,30,window->width,window->height-30};
     UIRect  rect = {30,30,window->width-60,window->height-100};
     m_fileList.SetRect(rect);
